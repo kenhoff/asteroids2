@@ -57,13 +57,6 @@ window.onload = function() {
 			ship.body.thrust(shipSpeed)
 		
 		}
-/*
-		if (cursors.up.isDown) {
-			ship.body.acceleration.y = -shipSpeed
-		}
-		if (cursors.down.isDown) {
-			ship.body.acceleration.y = shipSpeed
-		}*/
 	}
 
 	function render () {
