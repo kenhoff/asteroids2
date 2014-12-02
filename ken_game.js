@@ -20,6 +20,18 @@ window.onload = function() {
 	var asteroidCount = 100
 	var asteroidMass = 10
 
+	var shipSpeed = 100
+	var shipForwardSpeed = 100
+	var shipRotateSpeed = 10;
+	
+	var shotThrust = 10000
+	var shotMass = 0.1
+
+	var laserNoise
+	var asteroidNoise
+
+	var gameOverFlag = false;
+	
 	function preload () {
 
 		game.load.image('ship', 'playerShip1_blue.png');
@@ -29,6 +41,12 @@ window.onload = function() {
 		game.physics.startSystem(Phaser.Physics.P2JS);
 		cursors = game.input.keyboard.createCursorKeys();
 
+		game.load.audio('laser', "Laser_Shoot10.wav")
+		game.load.audio('asteroid', "Explosion4.wav")
+
+		game.load.bitmapFont("nokia", "nokia.png", "nokia.xml")
+
+
 	}
 
 	function create () {
@@ -36,7 +54,8 @@ window.onload = function() {
 		bulletsCG = game.physics.p2.createCollisionGroup()
 		asteroidsCG = game.physics.p2.createCollisionGroup()
 
-		
+		laserNoise = game.add.audio('laser')
+		asteroidNoise = game.add.audio('asteroid')
 		
 		// create stars here
 
@@ -58,11 +77,15 @@ window.onload = function() {
 		ship.body.clearShapes()
 		ship.body.addCircle(50)
 
-		game.camera.follow(ship)
+
+		game.camera.follow(ship, Phaser.Camera.FOLLOW_TOPDOWN)
 
 		ship.body.setCollisionGroup(playerCG)
 		ship.body.collides(asteroidsCG)
-		ship.body.createGroupCallback(asteroidsCG, function () {}, this)
+		ship.body.createGroupCallback(asteroidsCG, function (thisShip, thisAsteroid) {
+			gameOver(ship.x, ship.y)
+			thisShip.sprite.destroy()
+		}, this)
 
 		game.physics.p2.setImpactEvents(true)
 		game.physics.p2.applyDamping = true;
@@ -75,35 +98,32 @@ window.onload = function() {
 	}
 
 	function update () {
-		var shipSpeed = 100
-		var shipForwardSpeed = 100
-		var shipRotateSpeed = 10;
 
+		if (!gameOverFlag) {
 
+			ship.body.setZeroForce()
+			//ship.body.angularAcceleration = 0;
 
-		ship.body.setZeroForce()
-		ship.body.angularAcceleration = 0;
+			if (cursors.left.isDown) {
+				ship.body.angularForce -= shipRotateSpeed
+			}
+			else if (cursors.right.isDown) {
+				ship.body.angularForce += shipRotateSpeed
+			}
+			if (cursors.up.isDown) {
+				ship.body.thrust(shipSpeed)
+			}
 
-		if (cursors.left.isDown) {
-			ship.body.angularForce -= shipRotateSpeed
-		}
-		else if (cursors.right.isDown) {
-			ship.body.angularForce += shipRotateSpeed
-		}
-		if (cursors.up.isDown) {
-			ship.body.thrust(shipSpeed)
-		}
-
-		if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
-			fire()
+			if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
+				fire()
+			}
 		}
 	}
 
 	fire = function () {
-		var shotThrust = 10000
-		var shotMass = 0.1
 	
 		if (reloaded == true) {
+			laserNoise.play()
 			shot = game.add.sprite(ship.x, ship.y, "shot")
 			game.physics.p2.enable(shot)
 			shot.body.mass = shotMass
@@ -113,13 +133,13 @@ window.onload = function() {
 			shot.body.thrust(shotThrust)
 
 			shot.body.createGroupCallback(asteroidsCG, function (thisShot, thisAsteroid) {
+				asteroidNoise.play()
 				var newSize = thisAsteroid.asteroidSize - 1
 
 				
 				var newVelocity = thisAsteroid.velocity
 
 				var shotAngle = Math.atan2(thisShot.velocity.y, thisShot.velocity.x)
-				console.log(shotAngle)
 
 				thisShot.sprite.destroy()
 
@@ -139,9 +159,7 @@ window.onload = function() {
 						break
 				}
 				//r = (random.angle() / 180 ) * Math.PI
-				//console.log(r)
 				r = shotAngle
-				console.log(r)
 				asteroidSplitSpeed = 100
 				newVelocity.x += Math.cos(r) * asteroidSplitSpeed
 				newVelocity.y += Math.sin(r) * asteroidSplitSpeed
@@ -159,7 +177,7 @@ window.onload = function() {
 				score += 1
 			})
 
-			game.time.events.add(200, function () {this.destroy()}, shot)
+			game.time.events.add(300, function () {this.destroy()}, shot)
 
 			reloaded = false
 			game.time.events.add(500, function () {reloaded = true}, this)
@@ -220,9 +238,14 @@ window.onload = function() {
 	}
 
 	function render () {
-		game.debug.text("FPS: " + game.time.fps || "--", 32, 64)
-		game.debug.text("Physics bodies: " + game.physics.p2.getBodies().length, 32, 96)
-		game.debug.text("Score: " + score, 32, 32)
+		//game.debug.text("FPS: " + game.time.fps || "--", 32, 64)
+		//game.debug.text("Physics bodies: " + game.physics.p2.getBodies().length, 32, 96)
+		//game.debug.text("Score: " + score, 32, 32)
+	}
+
+	function gameOver(x, y) {
+		game.add.bitmapText(x, y, "nokia", "Score: " + score)
+		gameOverFlag = true
 	}
 };
 
